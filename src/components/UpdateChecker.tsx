@@ -12,6 +12,7 @@ function UpdateChecker() {
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo>({ available: false });
   const [updating, setUpdating] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [downloadStatus, setDownloadStatus] = useState("");
 
   useEffect(() => {
     checkForUpdates();
@@ -35,20 +36,30 @@ function UpdateChecker() {
   const installUpdate = async () => {
     try {
       setUpdating(true);
+      setDownloadStatus("Preparing...");
       const update = await check();
       if (update) {
+        let downloaded = 0;
+        let contentLength = 0;
+        
         await update.downloadAndInstall((event) => {
           switch (event.event) {
             case "Started":
+              contentLength = event.data.contentLength ?? 0;
+              downloaded = 0;
               setProgress(0);
+              setDownloadStatus("Starting download...");
               break;
             case "Progress":
-              if (event.data.contentLength) {
-                setProgress(Math.round((event.data.chunkLength / event.data.contentLength) * 100));
+              downloaded += event.data.chunkLength;
+              if (contentLength > 0) {
+                setProgress(Math.round((downloaded / contentLength) * 100));
               }
+              setDownloadStatus(`Downloading...`);
               break;
             case "Finished":
               setProgress(100);
+              setDownloadStatus("Installing...");
               break;
           }
         });
@@ -57,6 +68,7 @@ function UpdateChecker() {
     } catch (error) {
       console.error("Failed to install update:", error);
       setUpdating(false);
+      setDownloadStatus("");
     }
   };
 
@@ -83,7 +95,7 @@ function UpdateChecker() {
                   style={{ width: `${progress}%` }}
                 ></div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">Downloading... {progress}%</p>
+              <p className="text-xs text-gray-500 mt-1">{downloadStatus} {progress}%</p>
             </div>
           ) : (
             <button
