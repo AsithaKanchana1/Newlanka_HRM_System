@@ -12,8 +12,11 @@ export interface Employee {
   date_of_resign: string | null;
   working_status: string;
   marital_status: string | null;
-  job_role: string | null;
+  cader: string | null;
+  designation: string | null;
+  allocation: string | null;
   department: string | null;
+  image_path: string | null;
   created_at?: string;
 }
 

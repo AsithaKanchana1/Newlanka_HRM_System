@@ -1,17 +1,21 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import EmployeeManagement from "./components/EmployeeManagement";
 import Dashboard from "./components/Dashboard";
 import Sidebar, { PageType } from "./components/Sidebar";
 import UpdateChecker from "./components/UpdateChecker";
 import WorkInProgress from "./components/WorkInProgress";
 import Footer from "./components/Footer";
+import Login from "./components/Login";
+import UserManagement from "./components/UserManagement";
 
 // Developer info - Update these with your details
 const DEVELOPER_NAME = "Asitha Kanchana";
 const LINKEDIN_URL = "https://www.linkedin.com/in/asithakanchana";
 
-function App() {
+function AppContent() {
+  const { user, loading: authLoading } = useAuth();
   const [currentPage, setCurrentPage] = useState<PageType>("dashboard");
   const [dbInitialized, setDbInitialized] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
@@ -48,15 +52,22 @@ function App() {
     );
   }
 
-  if (!dbInitialized) {
+  if (!dbInitialized || authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Initializing database...</p>
+          <p className="mt-4 text-gray-600">
+            {!dbInitialized ? "Initializing database..." : "Loading..."}
+          </p>
         </div>
       </div>
     );
+  }
+
+  // Show login if not authenticated
+  if (!user) {
+    return <Login />;
   }
 
   const renderPage = () => {
@@ -98,11 +109,15 @@ function App() {
           />
         );
       case "admin":
+        // Show User Management for users with permission, otherwise show WIP
+        if (user.permissions.can_manage_users) {
+          return <UserManagement />;
+        }
         return (
           <WorkInProgress 
             title="Admin Panel" 
-            description="User management, roles, permissions, and system administration will be available here."
-            icon="👤"
+            description="You don't have permission to access user management."
+            icon="🔒"
           />
         );
       case "settings":
@@ -129,6 +144,14 @@ function App() {
       </div>
       <UpdateChecker />
     </div>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 

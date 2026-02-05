@@ -1,5 +1,8 @@
 use crate::models::{DashboardStats, DepartmentCount, Employee, EmployeeFilters};
-use crate::DbConnection;
+use crate::{AppDataDir, DbConnection};
+use base64::{engine::general_purpose, Engine as _};
+use std::fs;
+use std::path::Path;
 use tauri::State;
 
 #[tauri::command]
@@ -18,8 +21,8 @@ pub fn get_employees(
     let mut sql = String::from(
         "SELECT epf_number, name_with_initials, full_name, dob, police_area, 
                 transport_route, mobile_1, mobile_2, address, date_of_join, 
-                date_of_resign, working_status, marital_status, job_role, 
-                department, created_at 
+                date_of_resign, working_status, marital_status, cader,
+                designation, allocation, department, image_path, created_at 
          FROM employees WHERE 1=1"
     );
     let mut params: Vec<String> = Vec::new();
@@ -66,9 +69,12 @@ pub fn get_employees(
                 date_of_resign: row.get(10)?,
                 working_status: row.get(11)?,
                 marital_status: row.get(12)?,
-                job_role: row.get(13)?,
-                department: row.get(14)?,
-                created_at: row.get(15)?,
+                cader: row.get(13)?,
+                designation: row.get(14)?,
+                allocation: row.get(15)?,
+                department: row.get(16)?,
+                image_path: row.get(17)?,
+                created_at: row.get(18)?,
             })
         })
         .map_err(|e| e.to_string())?
@@ -79,6 +85,47 @@ pub fn get_employees(
 }
 
 #[tauri::command]
+pub fn get_employee_by_epf(
+    epf_number: String,
+    db: State<'_, DbConnection>,
+) -> Result<Employee, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    
+    conn.query_row(
+        "SELECT epf_number, name_with_initials, full_name, dob, police_area, 
+                transport_route, mobile_1, mobile_2, address, date_of_join, 
+                date_of_resign, working_status, marital_status, cader,
+                designation, allocation, department, image_path, created_at 
+         FROM employees WHERE epf_number = ?1",
+        [&epf_number],
+        |row| {
+            Ok(Employee {
+                epf_number: row.get(0)?,
+                name_with_initials: row.get(1)?,
+                full_name: row.get(2)?,
+                dob: row.get(3)?,
+                police_area: row.get(4)?,
+                transport_route: row.get(5)?,
+                mobile_1: row.get(6)?,
+                mobile_2: row.get(7)?,
+                address: row.get(8)?,
+                date_of_join: row.get(9)?,
+                date_of_resign: row.get(10)?,
+                working_status: row.get(11)?,
+                marital_status: row.get(12)?,
+                cader: row.get(13)?,
+                designation: row.get(14)?,
+                allocation: row.get(15)?,
+                department: row.get(16)?,
+                image_path: row.get(17)?,
+                created_at: row.get(18)?,
+            })
+        },
+    )
+    .map_err(|e| format!("Employee not found: {}", e))
+}
+
+#[tauri::command]
 pub fn create_employee(employee: Employee, db: State<'_, DbConnection>) -> Result<(), String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
     
@@ -86,8 +133,9 @@ pub fn create_employee(employee: Employee, db: State<'_, DbConnection>) -> Resul
         "INSERT INTO employees (
             epf_number, name_with_initials, full_name, dob, police_area,
             transport_route, mobile_1, mobile_2, address, date_of_join,
-            date_of_resign, working_status, marital_status, job_role, department
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+            date_of_resign, working_status, marital_status, cader,
+            designation, allocation, department, image_path
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)",
         rusqlite::params![
             employee.epf_number,
             employee.name_with_initials,
@@ -102,8 +150,11 @@ pub fn create_employee(employee: Employee, db: State<'_, DbConnection>) -> Resul
             employee.date_of_resign,
             employee.working_status,
             employee.marital_status,
-            employee.job_role,
+            employee.cader,
+            employee.designation,
+            employee.allocation,
             employee.department,
+            employee.image_path,
         ],
     )
     .map_err(|e| e.to_string())?;
@@ -120,7 +171,8 @@ pub fn update_employee(employee: Employee, db: State<'_, DbConnection>) -> Resul
             name_with_initials = ?2, full_name = ?3, dob = ?4, police_area = ?5,
             transport_route = ?6, mobile_1 = ?7, mobile_2 = ?8, address = ?9,
             date_of_join = ?10, date_of_resign = ?11, working_status = ?12,
-            marital_status = ?13, job_role = ?14, department = ?15
+            marital_status = ?13, cader = ?14, designation = ?15, allocation = ?16,
+            department = ?17, image_path = ?18
          WHERE epf_number = ?1",
         rusqlite::params![
             employee.epf_number,
@@ -136,8 +188,11 @@ pub fn update_employee(employee: Employee, db: State<'_, DbConnection>) -> Resul
             employee.date_of_resign,
             employee.working_status,
             employee.marital_status,
-            employee.job_role,
+            employee.cader,
+            employee.designation,
+            employee.allocation,
             employee.department,
+            employee.image_path,
         ],
     )
     .map_err(|e| e.to_string())?;
@@ -207,6 +262,40 @@ pub fn get_distinct_police_areas(db: State<'_, DbConnection>) -> Result<Vec<Stri
 }
 
 #[tauri::command]
+pub fn get_distinct_designations(db: State<'_, DbConnection>) -> Result<Vec<String>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    
+    let mut stmt = conn
+        .prepare("SELECT DISTINCT designation FROM employees WHERE designation IS NOT NULL AND designation != '' ORDER BY designation")
+        .map_err(|e| e.to_string())?;
+    
+    let designations = stmt
+        .query_map([], |row| row.get(0))
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<String>, _>>()
+        .map_err(|e| e.to_string())?;
+    
+    Ok(designations)
+}
+
+#[tauri::command]
+pub fn get_distinct_allocations(db: State<'_, DbConnection>) -> Result<Vec<String>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    
+    let mut stmt = conn
+        .prepare("SELECT DISTINCT allocation FROM employees WHERE allocation IS NOT NULL AND allocation != '' ORDER BY allocation")
+        .map_err(|e| e.to_string())?;
+    
+    let allocations = stmt
+        .query_map([], |row| row.get(0))
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<String>, _>>()
+        .map_err(|e| e.to_string())?;
+    
+    Ok(allocations)
+}
+
+#[tauri::command]
 pub fn get_dashboard_stats(db: State<'_, DbConnection>) -> Result<DashboardStats, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
     
@@ -260,4 +349,69 @@ pub fn get_dashboard_stats(db: State<'_, DbConnection>) -> Result<DashboardStats
         resigned_employees: resigned,
         departments,
     })
+}
+
+#[tauri::command]
+pub fn save_employee_image(
+    epf_number: String,
+    image_data: String,
+    app_data_dir: State<'_, AppDataDir>,
+) -> Result<String, String> {
+    // Create employee folder: employee_images/<epf_number>/
+    let employee_folder = app_data_dir.0.join("employee_images").join(&epf_number);
+    fs::create_dir_all(&employee_folder).map_err(|e| format!("Failed to create folder: {}", e))?;
+    
+    // Decode base64 image data
+    // Remove data URL prefix if present (e.g., "data:image/jpeg;base64,")
+    let base64_data = if image_data.contains(',') {
+        image_data.split(',').nth(1).unwrap_or(&image_data)
+    } else {
+        &image_data
+    };
+    
+    let image_bytes = general_purpose::STANDARD
+        .decode(base64_data)
+        .map_err(|e| format!("Failed to decode image: {}", e))?;
+    
+    // Determine image format from data URL or default to jpg
+    let extension = if image_data.contains("image/png") {
+        "png"
+    } else {
+        "jpg"
+    };
+    
+    // Save image file
+    let image_filename = format!("photo.{}", extension);
+    let image_path = employee_folder.join(&image_filename);
+    
+    fs::write(&image_path, image_bytes).map_err(|e| format!("Failed to save image: {}", e))?;
+    
+    // Return the relative path to store in database
+    let relative_path = format!("employee_images/{}/{}", epf_number, image_filename);
+    Ok(relative_path)
+}
+
+#[tauri::command]
+pub fn get_employee_image(
+    image_path: String,
+    app_data_dir: State<'_, AppDataDir>,
+) -> Result<String, String> {
+    let full_path = app_data_dir.0.join(&image_path);
+    
+    if !Path::new(&full_path).exists() {
+        return Err("Image not found".to_string());
+    }
+    
+    let image_bytes = fs::read(&full_path).map_err(|e| format!("Failed to read image: {}", e))?;
+    
+    // Determine MIME type from extension
+    let mime_type = if image_path.ends_with(".png") {
+        "image/png"
+    } else {
+        "image/jpeg"
+    };
+    
+    // Return as base64 data URL
+    let base64_data = general_purpose::STANDARD.encode(&image_bytes);
+    Ok(format!("data:{};base64,{}", mime_type, base64_data))
 }

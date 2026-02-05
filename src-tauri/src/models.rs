@@ -15,8 +15,11 @@ pub struct Employee {
     pub date_of_resign: Option<String>,
     pub working_status: String,
     pub marital_status: Option<String>,
-    pub job_role: Option<String>,
+    pub cader: Option<String>,
+    pub designation: Option<String>,
+    pub allocation: Option<String>,
     pub department: Option<String>,
+    pub image_path: Option<String>,
     #[serde(skip_deserializing)]
     pub created_at: Option<String>,
 }
@@ -41,4 +44,166 @@ pub struct DashboardStats {
 pub struct DepartmentCount {
     pub name: String,
     pub count: i32,
+}
+
+// User and Authentication Models
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct User {
+    pub id: i32,
+    pub username: String,
+    #[serde(skip_serializing)]
+    pub password_hash: String,
+    pub full_name: String,
+    pub role: String,  // "admin", "hr_manager", "hr_staff", "viewer", "custom"
+    pub department_access: Option<String>,  // null means all departments, or comma-separated list
+    pub is_active: bool,
+    pub permissions: UserPermissions,  // Custom permissions stored per user
+    pub created_at: Option<String>,
+    pub last_login: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UserSession {
+    pub user_id: i32,
+    pub username: String,
+    pub full_name: String,
+    pub role: String,
+    pub department_access: Option<String>,
+    pub permissions: UserPermissions,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UserPermissions {
+    pub can_view_employees: bool,
+    pub can_add_employees: bool,
+    pub can_edit_employees: bool,
+    pub can_delete_employees: bool,
+    pub can_manage_users: bool,
+    pub can_view_all_departments: bool,
+    pub can_export_data: bool,
+    pub can_view_reports: bool,
+    pub can_manage_settings: bool,
+}
+
+impl Default for UserPermissions {
+    fn default() -> Self {
+        UserPermissions {
+            can_view_employees: true,
+            can_add_employees: false,
+            can_edit_employees: false,
+            can_delete_employees: false,
+            can_manage_users: false,
+            can_view_all_departments: false,
+            can_export_data: false,
+            can_view_reports: false,
+            can_manage_settings: false,
+        }
+    }
+}
+
+impl UserPermissions {
+    pub fn admin() -> Self {
+        UserPermissions {
+            can_view_employees: true,
+            can_add_employees: true,
+            can_edit_employees: true,
+            can_delete_employees: true,
+            can_manage_users: true,
+            can_view_all_departments: true,
+            can_export_data: true,
+            can_view_reports: true,
+            can_manage_settings: true,
+        }
+    }
+
+    pub fn hr_manager() -> Self {
+        UserPermissions {
+            can_view_employees: true,
+            can_add_employees: true,
+            can_edit_employees: true,
+            can_delete_employees: true,
+            can_manage_users: false,
+            can_view_all_departments: true,
+            can_export_data: true,
+            can_view_reports: true,
+            can_manage_settings: false,
+        }
+    }
+
+    pub fn hr_staff() -> Self {
+        UserPermissions {
+            can_view_employees: true,
+            can_add_employees: true,
+            can_edit_employees: false,
+            can_delete_employees: false,
+            can_manage_users: false,
+            can_view_all_departments: false,
+            can_export_data: false,
+            can_view_reports: false,
+            can_manage_settings: false,
+        }
+    }
+
+    pub fn viewer() -> Self {
+        UserPermissions {
+            can_view_employees: true,
+            can_add_employees: false,
+            can_edit_employees: false,
+            can_delete_employees: false,
+            can_manage_users: false,
+            can_view_all_departments: false,
+            can_export_data: false,
+            can_view_reports: false,
+            can_manage_settings: false,
+        }
+    }
+
+    pub fn from_role(role: &str) -> Self {
+        match role {
+            "admin" => Self::admin(),
+            "hr_manager" => Self::hr_manager(),
+            "hr_staff" => Self::hr_staff(),
+            "viewer" => Self::viewer(),
+            _ => Self::default(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateUserRequest {
+    pub username: String,
+    pub password: String,
+    pub full_name: String,
+    pub role: String,
+    pub department_access: Option<String>,
+    pub permissions: Option<UserPermissions>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateUserRequest {
+    pub user_id: i32,
+    pub full_name: String,
+    pub role: String,
+    pub department_access: Option<String>,
+    pub is_active: bool,
+    pub permissions: Option<UserPermissions>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LoginRequest {
+    pub username: String,
+    pub password: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct UserInfo {
+    pub id: i32,
+    pub username: String,
+    pub full_name: String,
+    pub role: String,
+    pub department_access: Option<String>,
+    pub is_active: bool,
+    pub permissions: Option<UserPermissions>,
+    pub created_at: Option<String>,
+    pub last_login: Option<String>,
 }
