@@ -38,6 +38,10 @@ pub struct DashboardStats {
     pub active_employees: i32,
     pub resigned_employees: i32,
     pub departments: Vec<DepartmentCount>,
+    pub caders: Vec<DepartmentCount>,
+    pub allocations: Vec<DepartmentCount>,
+    pub recent_joinings: i32,
+    pub recent_resignations: i32,
 }
 
 #[derive(Debug, Serialize)]
@@ -83,6 +87,7 @@ pub struct UserPermissions {
     pub can_export_data: bool,
     pub can_view_reports: bool,
     pub can_manage_settings: bool,
+    pub can_backup_database: bool,
 }
 
 impl Default for UserPermissions {
@@ -97,6 +102,7 @@ impl Default for UserPermissions {
             can_export_data: false,
             can_view_reports: false,
             can_manage_settings: false,
+            can_backup_database: false,
         }
     }
 }
@@ -113,6 +119,7 @@ impl UserPermissions {
             can_export_data: true,
             can_view_reports: true,
             can_manage_settings: true,
+            can_backup_database: true,
         }
     }
 
@@ -127,6 +134,7 @@ impl UserPermissions {
             can_export_data: true,
             can_view_reports: true,
             can_manage_settings: false,
+            can_backup_database: false,
         }
     }
 
@@ -141,6 +149,7 @@ impl UserPermissions {
             can_export_data: false,
             can_view_reports: false,
             can_manage_settings: false,
+            can_backup_database: false,
         }
     }
 
@@ -155,6 +164,7 @@ impl UserPermissions {
             can_export_data: false,
             can_view_reports: false,
             can_manage_settings: false,
+            can_backup_database: false,
         }
     }
 

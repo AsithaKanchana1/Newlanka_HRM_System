@@ -17,6 +17,9 @@ fn main() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let (conn, app_dir) = init_db(app.handle()).expect("Failed to initialize database");
             app.manage(DbConnection(Mutex::new(conn)));
@@ -50,6 +53,9 @@ fn main() {
             commands::get_dashboard_stats,
             commands::save_employee_image,
             commands::get_employee_image,
+            commands::export_database,
+            commands::import_database,
+            commands::get_database_info,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

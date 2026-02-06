@@ -1,7 +1,7 @@
 import { useAuth } from "../context/AuthContext";
 import { ROLES } from "../types/auth";
 
-export type PageType = "dashboard" | "jobdesk" | "employees" | "leave" | "attendance" | "payroll" | "admin" | "settings";
+export type PageType = "dashboard" | "jobdesk" | "employees" | "leave" | "attendance" | "payroll" | "admin" | "settings" | "backup";
 
 interface SidebarProps {
   currentPage: PageType;
@@ -85,6 +85,15 @@ function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
         </svg>
       ),
     },
+    {
+      id: "backup",
+      label: "Database",
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+        </svg>
+      ),
+    },
   ];
 
   const getRoleLabel = (role: string): string => {
@@ -117,7 +126,14 @@ function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
       </div>
       
       <nav className="mt-2 flex-1">
-        {menuItems.map((item) => (
+        {menuItems
+          .filter((item) => {
+            // Filter based on permissions
+            if (item.id === "admin" && !user?.permissions.can_manage_users) return false;
+            if (item.id === "backup" && !user?.permissions.can_backup_database) return false;
+            return true;
+          })
+          .map((item) => (
           <button
             key={item.id}
             onClick={() => setCurrentPage(item.id)}

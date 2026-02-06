@@ -9,6 +9,7 @@ import WorkInProgress from "./components/WorkInProgress";
 import Footer from "./components/Footer";
 import Login from "./components/Login";
 import UserManagement from "./components/UserManagement";
+import DatabaseBackup from "./components/DatabaseBackup";
 
 // Developer info - Update these with your details
 const DEVELOPER_NAME = "Asitha Kanchana";
@@ -128,6 +129,8 @@ function AppContent() {
             icon="⚙️"
           />
         );
+      case "backup":
+        return <DatabaseBackup />;
       default:
         return <Dashboard />;
     }

@@ -323,16 +323,17 @@ pub fn get_dashboard_stats(db: State<'_, DbConnection>) -> Result<DashboardStats
         .map_err(|e| e.to_string())?;
     
     // Departments breakdown
-    let mut stmt = conn
+    let mut dept_stmt = conn
         .prepare(
             "SELECT COALESCE(department, 'Unassigned') as dept, COUNT(*) as count 
              FROM employees 
+             WHERE working_status = 'active'
              GROUP BY department 
              ORDER BY count DESC",
         )
         .map_err(|e| e.to_string())?;
     
-    let departments = stmt
+    let departments = dept_stmt
         .query_map([], |row| {
             Ok(DepartmentCount {
                 name: row.get(0)?,
@@ -343,11 +344,77 @@ pub fn get_dashboard_stats(db: State<'_, DbConnection>) -> Result<DashboardStats
         .collect::<Result<Vec<_>, _>>()
         .map_err(|e| e.to_string())?;
     
+    // Caders breakdown
+    let mut cader_stmt = conn
+        .prepare(
+            "SELECT COALESCE(cader, 'Unassigned') as cader, COUNT(*) as count 
+             FROM employees 
+             WHERE working_status = 'active'
+             GROUP BY cader 
+             ORDER BY count DESC",
+        )
+        .map_err(|e| e.to_string())?;
+    
+    let caders = cader_stmt
+        .query_map([], |row| {
+            Ok(DepartmentCount {
+                name: row.get(0)?,
+                count: row.get(1)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+    
+    // Allocations breakdown
+    let mut alloc_stmt = conn
+        .prepare(
+            "SELECT COALESCE(allocation, 'Unassigned') as allocation, COUNT(*) as count 
+             FROM employees 
+             WHERE working_status = 'active'
+             GROUP BY allocation 
+             ORDER BY count DESC",
+        )
+        .map_err(|e| e.to_string())?;
+    
+    let allocations = alloc_stmt
+        .query_map([], |row| {
+            Ok(DepartmentCount {
+                name: row.get(0)?,
+                count: row.get(1)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+    
+    // Recent joinings (last 30 days)
+    let recent_joinings: i32 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM employees WHERE date_of_join >= date('now', '-30 days')",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
+    
+    // Recent resignations (last 30 days)
+    let recent_resignations: i32 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM employees WHERE date_of_resign >= date('now', '-30 days')",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
+    
     Ok(DashboardStats {
         total_employees: total,
         active_employees: active,
         resigned_employees: resigned,
         departments,
+        caders,
+        allocations,
+        recent_joinings,
+        recent_resignations,
     })
 }
 
@@ -414,4 +481,130 @@ pub fn get_employee_image(
     // Return as base64 data URL
     let base64_data = general_purpose::STANDARD.encode(&image_bytes);
     Ok(format!("data:{};base64,{}", mime_type, base64_data))
+}
+
+#[tauri::command]
+pub fn export_database(
+    destination_path: String,
+    app_data_dir: State<'_, AppDataDir>,
+) -> Result<String, String> {
+    let db_path = app_data_dir.0.join("hrm_system.db");
+    
+    if !db_path.exists() {
+        return Err("Database file not found".to_string());
+    }
+    
+    // Copy database file to destination
+    fs::copy(&db_path, &destination_path)
+        .map_err(|e| format!("Failed to export database: {}", e))?;
+    
+    Ok(format!("Database exported successfully to: {}", destination_path))
+}
+
+#[tauri::command]
+pub fn import_database(
+    source_path: String,
+    app_data_dir: State<'_, AppDataDir>,
+    db: State<'_, DbConnection>,
+) -> Result<String, String> {
+    let source = Path::new(&source_path);
+    
+    if !source.exists() {
+        return Err("Source database file not found".to_string());
+    }
+    
+    // Validate it's a valid SQLite database
+    let source_conn = rusqlite::Connection::open(&source_path)
+        .map_err(|e| format!("Invalid database file: {}", e))?;
+    
+    // Check if it has the required tables
+    let has_employees: Result<i32, _> = source_conn.query_row(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='employees'",
+        [],
+        |row| row.get(0),
+    );
+    
+    let has_users: Result<i32, _> = source_conn.query_row(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='users'",
+        [],
+        |row| row.get(0),
+    );
+    
+    if has_employees.unwrap_or(0) == 0 || has_users.unwrap_or(0) == 0 {
+        return Err("Invalid HRM database: missing required tables".to_string());
+    }
+    
+    drop(source_conn);
+    
+    // Create backup of current database first
+    let db_path = app_data_dir.0.join("hrm_system.db");
+    let backup_path = app_data_dir.0.join("hrm_system_backup.db");
+    
+    if db_path.exists() {
+        fs::copy(&db_path, &backup_path)
+            .map_err(|e| format!("Failed to create backup: {}", e))?;
+    }
+    
+    // Close current connection by acquiring and dropping the lock
+    // Note: In a real scenario, we'd need to restart the app
+    {
+        let _conn = db.0.lock().map_err(|e| e.to_string())?;
+        // Connection will be dropped at end of scope
+    }
+    
+    // Copy the source database to app data directory
+    fs::copy(&source_path, &db_path)
+        .map_err(|e| format!("Failed to import database: {}", e))?;
+    
+    Ok("Database imported successfully. Please restart the application for changes to take effect.".to_string())
+}
+
+#[tauri::command]
+pub fn get_database_info(
+    app_data_dir: State<'_, AppDataDir>,
+    db: State<'_, DbConnection>,
+) -> Result<serde_json::Value, String> {
+    let db_path = app_data_dir.0.join("hrm_system.db");
+    
+    let file_size = if db_path.exists() {
+        fs::metadata(&db_path)
+            .map(|m| m.len())
+            .unwrap_or(0)
+    } else {
+        0
+    };
+    
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    
+    let employee_count: i32 = conn
+        .query_row("SELECT COUNT(*) FROM employees", [], |row| row.get(0))
+        .unwrap_or(0);
+    
+    let user_count: i32 = conn
+        .query_row("SELECT COUNT(*) FROM users", [], |row| row.get(0))
+        .unwrap_or(0);
+    
+    Ok(serde_json::json!({
+        "path": db_path.to_string_lossy(),
+        "size_bytes": file_size,
+        "size_formatted": format_file_size(file_size),
+        "employee_count": employee_count,
+        "user_count": user_count
+    }))
+}
+
+fn format_file_size(bytes: u64) -> String {
+    const KB: u64 = 1024;
+    const MB: u64 = KB * 1024;
+    const GB: u64 = MB * 1024;
+    
+    if bytes >= GB {
+        format!("{:.2} GB", bytes as f64 / GB as f64)
+    } else if bytes >= MB {
+        format!("{:.2} MB", bytes as f64 / MB as f64)
+    } else if bytes >= KB {
+        format!("{:.2} KB", bytes as f64 / KB as f64)
+    } else {
+        format!("{} bytes", bytes)
+    }
 }

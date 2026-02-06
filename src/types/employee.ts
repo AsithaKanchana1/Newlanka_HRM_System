@@ -32,4 +32,8 @@ export interface DashboardStats {
   active_employees: number;
   resigned_employees: number;
   departments: { name: string; count: number }[];
+  caders: { name: string; count: number }[];
+  allocations: { name: string; count: number }[];
+  recent_joinings: number;
+  recent_resignations: number;
 }

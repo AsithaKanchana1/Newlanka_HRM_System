@@ -4,6 +4,8 @@
  */
 
 import type { Employee } from "../types/employee";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeTextFile } from "@tauri-apps/plugin-fs";
 
 // Re-export for convenience
 export type ExportFormat = 'excel' | 'csv' | 'pdf';
@@ -49,12 +51,18 @@ export class ExportService {
       // Create workbook data
       const worksheetData = this.createWorksheetData(employees, columns);
       
-      // Generate Excel file using a simple CSV-to-Excel approach
-      // For full Excel support, we'll use a browser-compatible approach
-      const blob = this.generateExcelBlob(worksheetData, columns);
+      // Generate Excel XML content
+      const xmlContent = this.generateExcelXML(worksheetData, columns);
       
-      // Trigger download
-      this.downloadBlob(blob, `${filename}_${this.getTimestamp()}.xlsx`);
+      // Use Tauri dialog to save file
+      const filePath = await save({
+        defaultPath: `${filename}_${this.getTimestamp()}.xlsx`,
+        filters: [{ name: "Excel Files", extensions: ["xlsx", "xls"] }],
+      });
+      
+      if (filePath) {
+        await writeTextFile(filePath, xmlContent);
+      }
     } catch (error) {
       console.error("ExportService.exportToExcel error:", error);
       throw new Error(`Failed to export to Excel: ${error}`);
@@ -71,8 +79,16 @@ export class ExportService {
   ): Promise<void> {
     try {
       const csvContent = this.generateCSV(employees, columns);
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      this.downloadBlob(blob, `${filename}_${this.getTimestamp()}.csv`);
+      
+      // Use Tauri dialog to save file
+      const filePath = await save({
+        defaultPath: `${filename}_${this.getTimestamp()}.csv`,
+        filters: [{ name: "CSV Files", extensions: ["csv"] }],
+      });
+      
+      if (filePath) {
+        await writeTextFile(filePath, csvContent);
+      }
     } catch (error) {
       console.error("ExportService.exportToCSV error:", error);
       throw new Error(`Failed to export to CSV: ${error}`);
@@ -80,25 +96,27 @@ export class ExportService {
   }
 
   /**
-   * Export employees to printable PDF (opens print dialog)
+   * Export employees to printable PDF (saves HTML for printing)
    */
   static async exportToPDF(
     employees: Employee[],
     title: string = "Employee Report"
   ): Promise<void> {
     try {
-      const printWindow = window.open("", "_blank");
-      if (!printWindow) {
-        throw new Error("Could not open print window. Please allow popups.");
-      }
-
       const htmlContent = this.generatePDFHTML(employees, title);
-      printWindow.document.write(htmlContent);
-      printWindow.document.close();
       
-      printWindow.onload = () => {
-        printWindow.print();
-      };
+      // Use Tauri dialog to save HTML file
+      const filePath = await save({
+        defaultPath: `${title.replace(/\s+/g, '_')}_${this.getTimestamp()}.html`,
+        filters: [{ name: "HTML Files", extensions: ["html"] }],
+      });
+      
+      if (filePath) {
+        await writeTextFile(filePath, htmlContent);
+        // Open the file in browser for printing
+        const { open } = await import("@tauri-apps/plugin-shell");
+        await open(filePath);
+      }
     } catch (error) {
       console.error("ExportService.exportToPDF error:", error);
       throw new Error(`Failed to export to PDF: ${error}`);
@@ -120,12 +138,12 @@ export class ExportService {
   }
 
   /**
-   * Generate Excel blob using XML spreadsheet format
+   * Generate Excel XML content
    */
-  private static generateExcelBlob(
+  private static generateExcelXML(
     data: string[][],
     columns: ExcelColumn[]
-  ): Blob {
+  ): string {
     // Using XML Spreadsheet format for better Excel compatibility
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
     xml += '<?mso-application progid="Excel.Sheet"?>\n';
@@ -178,9 +196,7 @@ export class ExportService {
     xml += '  </Worksheet>\n';
     xml += '</Workbook>';
 
-    return new Blob([xml], { 
-      type: "application/vnd.ms-excel" 
-    });
+    return xml;
   }
 
   /**
@@ -301,19 +317,5 @@ export class ExportService {
   private static getTimestamp(): string {
     const now = new Date();
     return `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}`;
-  }
-
-  /**
-   * Download blob as file
-   */
-  private static downloadBlob(blob: Blob, filename: string): void {
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   }
 }

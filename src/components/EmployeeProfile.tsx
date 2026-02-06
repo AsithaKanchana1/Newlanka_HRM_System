@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeTextFile } from "@tauri-apps/plugin-fs";
+import { open } from "@tauri-apps/plugin-shell";
 import type { Employee } from "../types/employee";
 
 interface EmployeeProfileProps {
@@ -80,9 +83,7 @@ function EmployeeProfile({ epfNumber, onClose, onEdit, canEdit = false, canExpor
   };
 
   const handleExportPDF = async () => {
-    // Create a printable version of the profile
-    const printWindow = window.open('', '_blank');
-    if (!printWindow || !employee) return;
+    if (!employee) return;
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -302,13 +303,22 @@ function EmployeeProfile({ epfNumber, onClose, onEdit, canEdit = false, canExpor
       </html>
     `;
 
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-    
-    // Wait for content to load then print
-    printWindow.onload = () => {
-      printWindow.print();
-    };
+    try {
+      // Use Tauri dialog to save HTML file
+      const filePath = await save({
+        defaultPath: `Employee_${employee.epf_number}_${new Date().toISOString().split('T')[0]}.html`,
+        filters: [{ name: "HTML Files", extensions: ["html"] }],
+      });
+      
+      if (filePath) {
+        await writeTextFile(filePath, htmlContent);
+        // Open the file in browser for printing
+        await open(filePath);
+      }
+    } catch (err) {
+      console.error("Failed to export PDF:", err);
+      alert("Failed to export profile");
+    }
   };
 
   if (loading) {

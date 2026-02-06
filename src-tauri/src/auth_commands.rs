@@ -14,7 +14,7 @@ pub fn login(
         "SELECT id, username, password_hash, full_name, role, department_access, is_active,
                 can_view_employees, can_add_employees, can_edit_employees, can_delete_employees,
                 can_manage_users, can_view_all_departments, can_export_data, can_view_reports,
-                can_manage_settings
+                can_manage_settings, can_backup_database
          FROM users WHERE username = ?1",
         [&request.username],
         |row| {
@@ -35,6 +35,7 @@ pub fn login(
                 row.get::<_, bool>(13)?,
                 row.get::<_, bool>(14)?,
                 row.get::<_, bool>(15)?,
+                row.get::<_, bool>(16)?,
             ))
         },
     );
@@ -43,7 +44,7 @@ pub fn login(
         Ok((id, username, password_hash, full_name, role, department_access, is_active,
             can_view_employees, can_add_employees, can_edit_employees, can_delete_employees,
             can_manage_users, can_view_all_departments, can_export_data, can_view_reports,
-            can_manage_settings)) => {
+            can_manage_settings, can_backup_database)) => {
             if !is_active {
                 return Err("Account is deactivated. Please contact administrator.".to_string());
             }
@@ -69,6 +70,7 @@ pub fn login(
                 can_export_data,
                 can_view_reports,
                 can_manage_settings,
+                can_backup_database,
             };
             
             let session = UserSession {
@@ -133,8 +135,8 @@ pub fn create_user(
         "INSERT INTO users (username, password_hash, full_name, role, department_access,
                            can_view_employees, can_add_employees, can_edit_employees, can_delete_employees,
                            can_manage_users, can_view_all_departments, can_export_data, can_view_reports,
-                           can_manage_settings) 
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
+                           can_manage_settings, can_backup_database) 
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
         rusqlite::params![
             request.username,
             password_hash,
@@ -150,6 +152,7 @@ pub fn create_user(
             permissions.can_export_data,
             permissions.can_view_reports,
             permissions.can_manage_settings,
+            permissions.can_backup_database,
         ],
     )
     .map_err(|e| {
@@ -183,7 +186,7 @@ pub fn get_all_users(
             "SELECT id, username, full_name, role, department_access, is_active, created_at, last_login,
                     can_view_employees, can_add_employees, can_edit_employees, can_delete_employees,
                     can_manage_users, can_view_all_departments, can_export_data, can_view_reports,
-                    can_manage_settings
+                    can_manage_settings, can_backup_database
              FROM users ORDER BY id",
         )
         .map_err(|e| e.to_string())?;
@@ -209,6 +212,7 @@ pub fn get_all_users(
                     can_export_data: row.get(14)?,
                     can_view_reports: row.get(15)?,
                     can_manage_settings: row.get(16)?,
+                    can_backup_database: row.get(17)?,
                 }),
             })
         })
@@ -242,8 +246,9 @@ pub fn update_user(
         "UPDATE users SET full_name = ?1, role = ?2, department_access = ?3, is_active = ?4,
                          can_view_employees = ?5, can_add_employees = ?6, can_edit_employees = ?7,
                          can_delete_employees = ?8, can_manage_users = ?9, can_view_all_departments = ?10,
-                         can_export_data = ?11, can_view_reports = ?12, can_manage_settings = ?13
-         WHERE id = ?14",
+                         can_export_data = ?11, can_view_reports = ?12, can_manage_settings = ?13,
+                         can_backup_database = ?14
+         WHERE id = ?15",
         rusqlite::params![
             request.full_name,
             request.role,
@@ -258,6 +263,7 @@ pub fn update_user(
             permissions.can_export_data,
             permissions.can_view_reports,
             permissions.can_manage_settings,
+            permissions.can_backup_database,
             request.user_id,
         ],
     )

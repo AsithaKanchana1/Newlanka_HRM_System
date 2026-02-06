@@ -94,8 +94,7 @@ function Login() {
 
         {/* Footer */}
         <div className="mt-8 text-center text-sm text-gray-500">
-          <p>Default admin credentials:</p>
-          <p className="font-mono bg-gray-100 px-2 py-1 rounded mt-1">admin / admin123</p>
+          <p>&copy; {new Date().getFullYear()} New Lanka Clothing (Pvt) Ltd</p>
         </div>
       </div>
     </div>

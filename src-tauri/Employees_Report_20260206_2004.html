@@ -1,0 +1,73 @@
+
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Employees Report</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; }
+          .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #2563eb; padding-bottom: 15px; }
+          .header h1 { color: #1e40af; font-size: 24px; }
+          .header p { color: #6b7280; font-size: 14px; margin-top: 5px; }
+          table { width: 100%; border-collapse: collapse; font-size: 12px; }
+          th { background: #2563eb; color: white; padding: 10px 8px; text-align: left; }
+          td { padding: 8px; border-bottom: 1px solid #e5e7eb; }
+          tr:hover { background: #f9fafb; }
+          .status-active { color: #166534; background: #dcfce7; padding: 2px 8px; border-radius: 10px; }
+          .status-resigned { color: #991b1b; background: #fee2e2; padding: 2px 8px; border-radius: 10px; }
+          .footer { margin-top: 20px; text-align: center; font-size: 11px; color: #9ca3af; }
+          @media print {
+            .no-print { display: none; }
+            body { padding: 10px; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>New Lanka Clothing (Pvt) Ltd</h1>
+          <p>Employees Report - Generated on 06 February 2026</p>
+          <p>Total Records: 2</p>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>EPF No.</th>
+              <th>Name</th>
+              <th>Department</th>
+              <th>Designation</th>
+              <th>Mobile</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+      <tr>
+        <td>5000</td>
+        <td>test</td>
+        <td>hr</td>
+        <td>assistent</td>
+        <td>-</td>
+        <td class="status-active">
+          Active
+        </td>
+      </tr>
+    
+      <tr>
+        <td>5001</td>
+        <td>test2</td>
+        <td>hr</td>
+        <td>-</td>
+        <td>-</td>
+        <td class="status-resigned">
+          Resigned
+        </td>
+      </tr>
+    
+          </tbody>
+        </table>
+        <div class="footer">
+          <p>HRM System - New Lanka Clothing (Pvt) Ltd</p>
+        </div>
+      </body>
+      </html>
+    

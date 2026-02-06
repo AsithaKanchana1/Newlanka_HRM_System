@@ -125,18 +125,26 @@ jobs:
           # Find the signature files and bundles
           cd release-assets
           
-          # Get Windows signature
+          # Get Windows signature (prefer NSIS over MSI)
           WIN_SIG=""
-          if [ -f "HRM System_${VERSION}_x64-setup.nsis.zip.sig" ]; then
+          WIN_URL=""
+          if [ -f "HRM.System_${VERSION}_x64-setup.nsis.zip.sig" ]; then
+            WIN_SIG=$(cat "HRM.System_${VERSION}_x64-setup.nsis.zip.sig")
+            WIN_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/HRM.System_${VERSION}_x64-setup.nsis.zip"
+          elif [ -f "HRM System_${VERSION}_x64-setup.nsis.zip.sig" ]; then
             WIN_SIG=$(cat "HRM System_${VERSION}_x64-setup.nsis.zip.sig")
-          elif [ -f "HRM System_${VERSION}_x64_en-US.msi.sig" ]; then
-            WIN_SIG=$(cat "HRM System_${VERSION}_x64_en-US.msi.sig")
+            WIN_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/HRM%20System_${VERSION}_x64-setup.nsis.zip"
+          elif [ -f "HRM.System_${VERSION}_x64_en-US.msi.zip.sig" ]; then
+            WIN_SIG=$(cat "HRM.System_${VERSION}_x64_en-US.msi.zip.sig")
+            WIN_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/HRM.System_${VERSION}_x64_en-US.msi.zip"
           fi
           
           # Get Linux signature
           LINUX_SIG=""
-          if [ -f "hrm-system_${VERSION}_amd64.AppImage.sig" ]; then
-            LINUX_SIG=$(cat "hrm-system_${VERSION}_amd64.AppImage.sig")
+          LINUX_URL=""
+          if [ -f "hrm-system_${VERSION}_amd64.AppImage.tar.gz.sig" ]; then
+            LINUX_SIG=$(cat "hrm-system_${VERSION}_amd64.AppImage.tar.gz.sig")
+            LINUX_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/hrm-system_${VERSION}_amd64.AppImage.tar.gz"
           fi
           
           cd ..
@@ -150,11 +158,11 @@ jobs:
             "platforms": {
               "windows-x86_64": {
                 "signature": "${WIN_SIG}",
-                "url": "https://github.com/${{ github.repository }}/releases/download/v${VERSION}/HRM.System_${VERSION}_x64_en-US.msi.zip"
+                "url": "${WIN_URL}"
               },
               "linux-x86_64": {
                 "signature": "${LINUX_SIG}",
-                "url": "https://github.com/${{ github.repository }}/releases/download/v${VERSION}/hrm-system_${VERSION}_amd64.AppImage.tar.gz"
+                "url": "${LINUX_URL}"
               }
             }
           }
