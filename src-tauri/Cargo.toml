@@ -1,6 +1,6 @@
 [package]
 name = "hrm-system"
-version = "1.2.4"
+version = "1.2.5"
 description = "HR Management System for New Lanka Clothing"
 authors = ["New Lanka Clothing"]
 edition = "2021"
