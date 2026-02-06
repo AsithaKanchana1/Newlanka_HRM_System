@@ -9,6 +9,7 @@ export interface UserPermissions {
   can_view_reports: boolean;
   can_manage_settings: boolean;
   can_backup_database: boolean;
+  can_view_audit_logs: boolean;
 }
 
 export interface UserSession {
@@ -89,6 +90,7 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
   { key: 'can_manage_users', label: 'Manage Users', description: 'Can create and manage user accounts', category: 'Administration' },
   { key: 'can_manage_settings', label: 'Manage Settings', description: 'Can modify system settings', category: 'Administration' },
   { key: 'can_backup_database', label: 'Database Backup', description: 'Can backup and restore database', category: 'Administration' },
+  { key: 'can_view_audit_logs', label: 'View Audit Logs', description: 'Can view system activity history', category: 'Administration' },
 ];
 
 // Get permissions for a given role
@@ -106,6 +108,7 @@ export function getPermissionsByRole(role: string): UserPermissions {
         can_view_reports: true,
         can_manage_settings: true,
         can_backup_database: true,
+        can_view_audit_logs: true,
       };
     case 'hr_manager':
       return {
@@ -119,6 +122,7 @@ export function getPermissionsByRole(role: string): UserPermissions {
         can_view_reports: true,
         can_manage_settings: false,
         can_backup_database: false,
+        can_view_audit_logs: false,
       };
     case 'hr_staff':
       return {
@@ -132,6 +136,7 @@ export function getPermissionsByRole(role: string): UserPermissions {
         can_view_reports: false,
         can_manage_settings: false,
         can_backup_database: false,
+        can_view_audit_logs: false,
       };
     case 'viewer':
     default:
@@ -146,6 +151,7 @@ export function getPermissionsByRole(role: string): UserPermissions {
         can_view_reports: false,
         can_manage_settings: false,
         can_backup_database: false,
+        can_view_audit_logs: false,
       };
   }
 }

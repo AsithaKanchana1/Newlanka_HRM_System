@@ -7,3 +7,4 @@ export * from './EmployeeService';
 export * from './AuthService';
 export * from './ExportService';
 export * from './FilterService';
+export * from './AuditService';

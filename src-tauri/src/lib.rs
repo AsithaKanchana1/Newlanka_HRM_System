@@ -99,8 +99,8 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> SqliteResult<(Connection, PathB
         // Default password is "admin123" - should be changed on first login
         let default_password_hash = hash_password("admin123");
         conn.execute(
-            "INSERT INTO users (username, password_hash, full_name, role, can_view_employees, can_add_employees, can_edit_employees, can_delete_employees, can_manage_users, can_view_all_departments, can_export_data, can_view_reports, can_manage_settings, can_backup_database) 
-             VALUES ('admin', ?1, 'System Administrator', 'admin', 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)",
+            "INSERT INTO users (username, password_hash, full_name, role, can_view_employees, can_add_employees, can_edit_employees, can_delete_employees, can_manage_users, can_view_all_departments, can_export_data, can_view_reports, can_manage_settings, can_backup_database, can_view_audit_logs) 
+             VALUES ('admin', ?1, 'System Administrator', 'admin', 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)",
             [&default_password_hash],
         )?;
         eprintln!("Created default admin user (username: admin, password: admin123)");
@@ -111,6 +111,24 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> SqliteResult<(Connection, PathB
     let _ = conn.execute("ALTER TABLE employees ADD COLUMN designation TEXT", []);
     let _ = conn.execute("ALTER TABLE employees ADD COLUMN allocation TEXT", []);
     let _ = conn.execute("ALTER TABLE employees ADD COLUMN image_path TEXT", []);
+    
+    // Create audit_logs table for tracking all database actions
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            username TEXT NOT NULL,
+            action TEXT NOT NULL,
+            entity_type TEXT NOT NULL,
+            entity_id TEXT,
+            old_value TEXT,
+            new_value TEXT,
+            ip_address TEXT,
+            details TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )",
+        [],
+    )?;
     
     // Add permission columns to users table if they don't exist (migration)
     let _ = conn.execute("ALTER TABLE users ADD COLUMN can_view_employees INTEGER DEFAULT 1", []);
@@ -123,10 +141,11 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> SqliteResult<(Connection, PathB
     let _ = conn.execute("ALTER TABLE users ADD COLUMN can_view_reports INTEGER DEFAULT 0", []);
     let _ = conn.execute("ALTER TABLE users ADD COLUMN can_manage_settings INTEGER DEFAULT 0", []);
     let _ = conn.execute("ALTER TABLE users ADD COLUMN can_backup_database INTEGER DEFAULT 0", []);
+    let _ = conn.execute("ALTER TABLE users ADD COLUMN can_view_audit_logs INTEGER DEFAULT 0", []);
     
     // Update existing admin users to have all permissions
     let _ = conn.execute(
-        "UPDATE users SET can_view_employees=1, can_add_employees=1, can_edit_employees=1, can_delete_employees=1, can_manage_users=1, can_view_all_departments=1, can_export_data=1, can_view_reports=1, can_manage_settings=1, can_backup_database=1 WHERE role='admin'",
+        "UPDATE users SET can_view_employees=1, can_add_employees=1, can_edit_employees=1, can_delete_employees=1, can_manage_users=1, can_view_all_departments=1, can_export_data=1, can_view_reports=1, can_manage_settings=1, can_backup_database=1, can_view_audit_logs=1 WHERE role='admin'",
         [],
     );
     

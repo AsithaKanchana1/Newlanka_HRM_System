@@ -53,9 +53,14 @@ fn main() {
             commands::get_dashboard_stats,
             commands::save_employee_image,
             commands::get_employee_image,
+            commands::save_binary_file,
             commands::export_database,
             commands::import_database,
             commands::get_database_info,
+            // Audit log commands
+            commands::create_audit_log,
+            commands::get_audit_logs,
+            commands::get_audit_log_summary,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

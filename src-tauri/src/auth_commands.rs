@@ -14,7 +14,7 @@ pub fn login(
         "SELECT id, username, password_hash, full_name, role, department_access, is_active,
                 can_view_employees, can_add_employees, can_edit_employees, can_delete_employees,
                 can_manage_users, can_view_all_departments, can_export_data, can_view_reports,
-                can_manage_settings, can_backup_database
+                can_manage_settings, can_backup_database, can_view_audit_logs
          FROM users WHERE username = ?1",
         [&request.username],
         |row| {
@@ -36,6 +36,7 @@ pub fn login(
                 row.get::<_, bool>(14)?,
                 row.get::<_, bool>(15)?,
                 row.get::<_, bool>(16)?,
+                row.get::<_, bool>(17)?,
             ))
         },
     );
@@ -44,7 +45,7 @@ pub fn login(
         Ok((id, username, password_hash, full_name, role, department_access, is_active,
             can_view_employees, can_add_employees, can_edit_employees, can_delete_employees,
             can_manage_users, can_view_all_departments, can_export_data, can_view_reports,
-            can_manage_settings, can_backup_database)) => {
+            can_manage_settings, can_backup_database, can_view_audit_logs)) => {
             if !is_active {
                 return Err("Account is deactivated. Please contact administrator.".to_string());
             }
@@ -71,6 +72,7 @@ pub fn login(
                 can_view_reports,
                 can_manage_settings,
                 can_backup_database,
+                can_view_audit_logs,
             };
             
             let session = UserSession {
@@ -186,7 +188,7 @@ pub fn get_all_users(
             "SELECT id, username, full_name, role, department_access, is_active, created_at, last_login,
                     can_view_employees, can_add_employees, can_edit_employees, can_delete_employees,
                     can_manage_users, can_view_all_departments, can_export_data, can_view_reports,
-                    can_manage_settings, can_backup_database
+                    can_manage_settings, can_backup_database, can_view_audit_logs
              FROM users ORDER BY id",
         )
         .map_err(|e| e.to_string())?;
@@ -213,6 +215,7 @@ pub fn get_all_users(
                     can_view_reports: row.get(15)?,
                     can_manage_settings: row.get(16)?,
                     can_backup_database: row.get(17)?,
+                    can_view_audit_logs: row.get(18)?,
                 }),
             })
         })
@@ -247,8 +250,8 @@ pub fn update_user(
                          can_view_employees = ?5, can_add_employees = ?6, can_edit_employees = ?7,
                          can_delete_employees = ?8, can_manage_users = ?9, can_view_all_departments = ?10,
                          can_export_data = ?11, can_view_reports = ?12, can_manage_settings = ?13,
-                         can_backup_database = ?14
-         WHERE id = ?15",
+                         can_backup_database = ?14, can_view_audit_logs = ?15
+         WHERE id = ?16",
         rusqlite::params![
             request.full_name,
             request.role,
@@ -264,6 +267,7 @@ pub fn update_user(
             permissions.can_view_reports,
             permissions.can_manage_settings,
             permissions.can_backup_database,
+            permissions.can_view_audit_logs,
             request.user_id,
         ],
     )

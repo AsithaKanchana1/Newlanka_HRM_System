@@ -21,6 +21,8 @@ const defaultPermissions: UserPermissions = {
   can_export_data: false,
   can_view_reports: false,
   can_manage_settings: false,
+  can_backup_database: false,
+  can_view_audit_logs: false,
 };
 
 // Permission Toggle Component

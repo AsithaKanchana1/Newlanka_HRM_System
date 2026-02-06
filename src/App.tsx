@@ -10,6 +10,7 @@ import Footer from "./components/Footer";
 import Login from "./components/Login";
 import UserManagement from "./components/UserManagement";
 import DatabaseBackup from "./components/DatabaseBackup";
+import AuditLogViewer from "./components/AuditLogViewer";
 
 // Developer info - Update these with your details
 const DEVELOPER_NAME = "Asitha Kanchana";
@@ -131,6 +132,18 @@ function AppContent() {
         );
       case "backup":
         return <DatabaseBackup />;
+      case "audit":
+        // Show Audit Log Viewer for users with permission
+        if (user.permissions.can_view_audit_logs) {
+          return <AuditLogViewer />;
+        }
+        return (
+          <WorkInProgress 
+            title="Activity Logs" 
+            description="You don't have permission to view activity logs."
+            icon="🔒"
+          />
+        );
       default:
         return <Dashboard />;
     }

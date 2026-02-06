@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { open } from "@tauri-apps/plugin-shell";
+import { QRCodeSVG, QRCodeCanvas } from "qrcode.react";
 import type { Employee } from "../types/employee";
 
 interface EmployeeProfileProps {
@@ -18,7 +19,9 @@ function EmployeeProfile({ epfNumber, onClose, onEdit, canEdit = false, canExpor
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showQRCode, setShowQRCode] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+  const qrCodeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadEmployee();
@@ -321,6 +324,55 @@ function EmployeeProfile({ epfNumber, onClose, onEdit, canEdit = false, canExpor
     }
   };
 
+  // Generate QR code data from employee details
+  const getQRCodeData = () => {
+    if (!employee) return "";
+    return JSON.stringify({
+      epf: employee.epf_number,
+      name: employee.name_with_initials || employee.full_name,
+      department: employee.department,
+      designation: employee.designation,
+      contact: employee.mobile_1,
+    });
+  };
+
+  const handleExportQRCode = async () => {
+    if (!employee) return;
+    
+    try {
+      // Find the canvas element within the QR code ref
+      const canvas = qrCodeRef.current?.querySelector('canvas');
+      if (!canvas) {
+        alert("Please toggle QR code on first");
+        setShowQRCode(true);
+        return;
+      }
+
+      const dataUrl = canvas.toDataURL('image/png');
+      
+      const filePath = await save({
+        defaultPath: `QR_${employee.epf_number}_${new Date().toISOString().slice(0, 10)}.png`,
+        filters: [{ name: "PNG Image", extensions: ["png"] }],
+      });
+
+      if (filePath) {
+        // Convert data URL to binary and save
+        const base64Data = dataUrl.replace(/^data:image\/png;base64,/, '');
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        await invoke("save_binary_file", { filePath, data: Array.from(bytes) });
+        alert("QR Code exported successfully!");
+      }
+    } catch (err) {
+      console.error("Failed to export QR code:", err);
+      alert("Failed to export QR code");
+    }
+  };
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -455,6 +507,46 @@ function EmployeeProfile({ epfNumber, onClose, onEdit, canEdit = false, canExpor
               <InfoItem label="Address" value={employee.address} fullWidth />
             </div>
           </div>
+
+          {/* QR Code Section */}
+          {showQRCode && (
+            <div className="border-t pt-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                </svg>
+                Employee QR Code
+              </h3>
+              <div className="flex items-center gap-6">
+                <div ref={qrCodeRef} className="bg-white p-4 border rounded-lg shadow-sm">
+                  <QRCodeSVG
+                    value={getQRCodeData()}
+                    size={150}
+                    level="M"
+                    includeMargin={true}
+                  />
+                  {/* Hidden canvas for export */}
+                  <div className="hidden">
+                    <QRCodeCanvas
+                      value={getQRCodeData()}
+                      size={300}
+                      level="H"
+                      includeMargin={true}
+                    />
+                  </div>
+                </div>
+                <div className="text-sm text-gray-600">
+                  <p className="font-medium mb-2">QR Code Contains:</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>EPF Number: {employee.epf_number}</li>
+                    <li>Name: {employee.name_with_initials || employee.full_name}</li>
+                    <li>Department: {employee.department || '-'}</li>
+                    <li>Designation: {employee.designation || '-'}</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Actions */}
@@ -463,6 +555,32 @@ function EmployeeProfile({ epfNumber, onClose, onEdit, canEdit = false, canExpor
             Added: {employee.created_at ? new Date(employee.created_at).toLocaleDateString() : '-'}
           </div>
           <div className="flex gap-3">
+            {/* QR Code Toggle */}
+            <button
+              onClick={() => setShowQRCode(!showQRCode)}
+              className={`flex items-center gap-2 px-4 py-2 border rounded-lg transition-colors ${
+                showQRCode 
+                  ? 'border-primary-500 bg-primary-50 text-primary-700' 
+                  : 'border-gray-300 hover:bg-gray-100'
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+              </svg>
+              {showQRCode ? 'Hide QR' : 'Show QR'}
+            </button>
+            {/* Export QR Code */}
+            {showQRCode && (
+              <button
+                onClick={handleExportQRCode}
+                className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Export QR
+              </button>
+            )}
             {canExport && (
               <button
                 onClick={handleExportPDF}

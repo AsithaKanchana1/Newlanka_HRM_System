@@ -37,3 +37,40 @@ export interface DashboardStats {
   recent_joinings: number;
   recent_resignations: number;
 }
+
+// Audit Log Types
+export interface AuditLog {
+  id: number;
+  user_id: number | null;
+  username: string;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  old_value: string | null;
+  new_value: string | null;
+  details: string | null;
+  created_at: string | null;
+}
+
+export interface AuditLogFilters {
+  username: string;
+  action: string;
+  entity_type: string;
+  start_date: string;
+  end_date: string;
+  limit: number;
+  offset: number;
+}
+
+export interface AuditLogResult {
+  logs: AuditLog[];
+  total_count: number;
+}
+
+export interface AuditLogSummary {
+  total_logs: number;
+  today_logs: number;
+  week_logs: number;
+  action_breakdown: { action: string; count: number }[];
+  active_users: { username: string; count: number }[];
+}

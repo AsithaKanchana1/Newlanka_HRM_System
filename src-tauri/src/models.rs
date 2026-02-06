@@ -88,6 +88,7 @@ pub struct UserPermissions {
     pub can_view_reports: bool,
     pub can_manage_settings: bool,
     pub can_backup_database: bool,
+    pub can_view_audit_logs: bool,
 }
 
 impl Default for UserPermissions {
@@ -103,6 +104,7 @@ impl Default for UserPermissions {
             can_view_reports: false,
             can_manage_settings: false,
             can_backup_database: false,
+            can_view_audit_logs: false,
         }
     }
 }
@@ -120,6 +122,7 @@ impl UserPermissions {
             can_view_reports: true,
             can_manage_settings: true,
             can_backup_database: true,
+            can_view_audit_logs: true,
         }
     }
 
@@ -135,6 +138,7 @@ impl UserPermissions {
             can_view_reports: true,
             can_manage_settings: false,
             can_backup_database: false,
+            can_view_audit_logs: false,
         }
     }
 
@@ -150,6 +154,7 @@ impl UserPermissions {
             can_view_reports: false,
             can_manage_settings: false,
             can_backup_database: false,
+            can_view_audit_logs: false,
         }
     }
 
@@ -165,6 +170,7 @@ impl UserPermissions {
             can_view_reports: false,
             can_manage_settings: false,
             can_backup_database: false,
+            can_view_audit_logs: false,
         }
     }
 
@@ -216,4 +222,36 @@ pub struct UserInfo {
     pub permissions: Option<UserPermissions>,
     pub created_at: Option<String>,
     pub last_login: Option<String>,
+}
+
+// Audit Log Models
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AuditLog {
+    pub id: i32,
+    pub user_id: Option<i32>,
+    pub username: String,
+    pub action: String,           // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, EXPORT, IMPORT, VIEW
+    pub entity_type: String,      // EMPLOYEE, USER, DATABASE, SYSTEM
+    pub entity_id: Option<String>,// e.g., EPF number or user ID
+    pub old_value: Option<String>,// JSON of old values for UPDATE/DELETE
+    pub new_value: Option<String>,// JSON of new values for CREATE/UPDATE
+    pub details: Option<String>,  // Additional context
+    pub created_at: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AuditLogFilters {
+    pub username: String,
+    pub action: String,
+    pub entity_type: String,
+    pub start_date: String,
+    pub end_date: String,
+    pub limit: i32,
+    pub offset: i32,
+}
+
+#[derive(Debug, Serialize)]
+pub struct AuditLogResult {
+    pub logs: Vec<AuditLog>,
+    pub total_count: i32,
 }

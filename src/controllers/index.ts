@@ -6,3 +6,4 @@
 export * from './EmployeeController';
 export * from './AuthController';
 export * from './ExportController';
+export * from './AuditController';
