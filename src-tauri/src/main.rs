@@ -6,6 +6,13 @@ use std::sync::Mutex;
 use tauri::Manager;
 
 fn main() {
+    // Fix for WebKit black screen issue on Linux
+    #[cfg(target_os = "linux")]
+    {
+        // These environment variables help with WebKit rendering issues on Linux
+        std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_process::init())
